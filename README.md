@@ -103,20 +103,23 @@ entry:
 ```console
 $ ctest --test-dir build --output-on-failure
     Start 1: ir_roundtrip
-1/5 Test #1: ir_roundtrip .....................   Passed
+1/6 Test #1: ir_roundtrip .....................   Passed
     Start 2: ir_diagnostics
-2/5 Test #2: ir_diagnostics ...................   Passed
+2/6 Test #2: ir_diagnostics ...................   Passed
     Start 3: ir_metadata
-3/5 Test #3: ir_metadata ......................   Passed
-    Start 4: cli_emit
-4/5 Test #4: cli_emit .........................   Passed
-    Start 5: cli_emit_matches
-5/5 Test #5: cli_emit_matches .................   Passed
+3/6 Test #3: ir_metadata ......................   Passed
+    Start 4: ir_normalisation
+4/6 Test #4: ir_normalisation .................   Passed
+    Start 5: cli_emit
+5/6 Test #5: cli_emit .........................   Passed
+    Start 6: cli_emit_matches
+6/6 Test #6: cli_emit_matches .................   Passed
 ```
 
 - `tests/cases/*.wir` 以 canonical 形式保存，round-trip 必须逐字节一致；
 - `test_ir_errors` 断言非法输入被拒绝，并核对诊断行列；
 - `test_ir_metadata` 检查 opcode/类型/谓词表自洽与空模块；
+- `test_ir_normalize` 验证 BOM/注释/CRLF/十六进制/指数浮点的归一化；
 - `cli_emit` 端到端验证 CLI 写出的文件与 canonical 用例逐字节一致。
 
 ## IR 文本契约

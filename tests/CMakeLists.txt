@@ -22,6 +22,11 @@ target_link_libraries(test_ir_metadata PRIVATE whippet_core)
 whippet_copy_sanitizer_runtime(test_ir_metadata)
 add_test(NAME ir_metadata COMMAND test_ir_metadata)
 
+add_executable(test_ir_normalize test_ir_normalize.c)
+target_link_libraries(test_ir_normalize PRIVATE whippet_core)
+whippet_copy_sanitizer_runtime(test_ir_normalize)
+add_test(NAME ir_normalisation COMMAND test_ir_normalize)
+
 # Exercise the CLI emit path (canonical IR and LF line endings) end to end.
 add_test(NAME cli_emit
          COMMAND whippet -o ${CMAKE_CURRENT_BINARY_DIR}/basic.cli.wir
