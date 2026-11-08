@@ -172,6 +172,9 @@ static inline const WhippetOperand *whippet_module_operand(
 
 static inline const WhippetOperand *whippet_instr_operands(
     const WhippetModule *module, const WhippetInstr *instruction) {
+    if (instruction->operand_count == 0) {
+        return NULL;
+    }
     return &module->operands[instruction->operands];
 }
 
