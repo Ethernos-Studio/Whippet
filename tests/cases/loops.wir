@@ -1,0 +1,15 @@
+func @sum_to(i32 %n) -> i32 {
+entry:
+  br loop
+loop:
+  %i = phi i32 [0, entry], [%next, loop]
+  %acc = phi i32 [0, entry], [%acc_next, loop]
+  %done = icmp sgt i32 %i, %n
+  condbr i32 %done, exit, body
+body:
+  %acc_next = add i32 %acc, %i
+  %next = add i32 %i, 1
+  br loop
+exit:
+  ret i32 %acc
+}

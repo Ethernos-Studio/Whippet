@@ -1,0 +1,13 @@
+/build/
+/build-*/
+/.vs/
+/.vscode/
+*.user
+*.suo
+*.swp
+*.obj
+*.pdb
+*.ilk
+*.exe
+*.lib
+*.dll

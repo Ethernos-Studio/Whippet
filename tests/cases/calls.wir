@@ -1,0 +1,25 @@
+declare i32 @putchar(i32 %c)
+
+declare void @abort()
+
+func @identity(i64 %x) -> i64 {
+entry:
+  ret i64 %x
+}
+
+func @use_calls(ptr %callback) -> i32 {
+entry:
+  %ch = call i32 @putchar(i32 65)
+  %indirect = call i32 %callback(i32 %ch)
+  %wide = call i64 @identity(i64 7)
+  %narrow = trunc i64 %wide to i32
+  %sum = add i32 %indirect, %narrow
+  call void @abort()
+  ret i32 %sum
+}
+
+func @run() {
+entry:
+  call void @abort()
+  ret
+}

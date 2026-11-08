@@ -1,0 +1,64 @@
+func @integer_ops(i8 %a, i16 %b, i32 %c, i64 %d) -> i64 {
+entry:
+  %t0 = add i8 %a, 1
+  %t1 = sub i16 %b, 2
+  %t2 = mul i32 %c, 3
+  %t3 = sdiv i64 %d, 4
+  %t4 = udiv i64 %t3, 5
+  %t5 = srem i64 %t4, 6
+  %t6 = urem i64 %t5, 7
+  %t7 = and i64 %t6, 8
+  %t8 = or i64 %t7, 16
+  %t9 = xor i64 %t8, 32
+  %t10 = shl i64 %t9, 1
+  %t11 = lshr i64 %t10, 1
+  %t12 = ashr i64 %t11, 1
+  %t13 = neg i64 %t12
+  %t14 = not i64 %t13
+  %t15 = copy i64 %t14
+  %t16 = add i64 -5, 2
+  %t17 = add i64 -9223372036854775808, 0
+  ret i64 %t15
+}
+
+func @float_ops(f32 %x, f64 %y) -> f64 {
+entry:
+  %f0 = fadd f32 %x, 1.5
+  %f1 = fsub f32 %f0, -0.25
+  %f2 = fmul f32 %f1, 2.0
+  %f3 = fdiv f32 %f2, 3.0
+  %f4 = fneg f32 %f3
+  %f5 = fadd f32 %f4, -0.0
+  %c0 = fcmp oeq f32 %f5, 0.001
+  %e0 = fpext f32 %f4 to f64
+  %e1 = fadd f64 %e0, %y
+  %c1 = fcmp ult f64 %e1, 9.0
+  %e2 = select i32 %c1, f64 %e1, f64 0.0
+  %s0 = fptrunc f64 %e2 to f32
+  %d0 = fpext f32 %s0 to f64
+  ret f64 %d0
+}
+
+func @memory_casts(i32 %n) -> i32 {
+entry:
+  %slot = alloca i32
+  store i32 %n, ptr %slot
+  %value = load i32, ptr %slot
+  %bytes = ptradd ptr %slot, i64 4
+  %next = load i32, ptr %bytes
+  %sum = add i32 %value, %next
+  %wide = sext i32 %sum to i64
+  %narrow = trunc i64 %wide to i32
+  %unsigned = zext i32 %narrow to i64
+  %same = bitcast i64 %unsigned to i64
+  %address = ptrtoint ptr %bytes to i64
+  %pointer = inttoptr i64 %address to ptr
+  %again = load i32, ptr %pointer
+  %as_float = sitofp i32 %again to f64
+  %from_float = fptosi f64 %as_float to i32
+  %as_unsigned_float = uitofp i32 %from_float to f32
+  %from_unsigned_float = fptoui f32 %as_unsigned_float to i32
+  %cmp = icmp eq ptr %pointer, %slot
+  %picked = select i32 %cmp, i32 %from_unsigned_float, i32 0
+  ret i32 %picked
+}

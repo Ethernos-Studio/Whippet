@@ -1,0 +1,23 @@
+declare i32 @putchar(i32 %c)
+
+func @classify(i32 %n) -> i32 {
+entry:
+  %is_zero = icmp eq i32 %n, 0
+  condbr i32 %is_zero, zero, positive
+zero:
+  ret i32 0
+positive:
+  %is_neg = icmp slt i32 %n, 0
+  condbr i32 %is_neg, negative, dispatch
+negative:
+  %negated = neg i32 %n
+  ret i32 %negated
+dispatch:
+  switch i32 %n, [one, two], other
+one:
+  ret i32 10
+two:
+  ret i32 20
+other:
+  ret i32 30
+}
