@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * Self-checks for the public IR tables and module API. These catch a missing
  * opcode table entry (which would otherwise be a NULL name) and verify that
  * every printed mnemonic parses back to the same enum value.

@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * Lexical conveniences are accepted but normalised: UTF-8 BOM, comments,
  * CRLF, hexadecimal integers and exponent-form floats. The printer must
  * produce the canonical form, which is then stable under a second round-trip.

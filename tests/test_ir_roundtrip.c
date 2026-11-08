@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * M0 acceptance: read .wir -> parse -> canonical print -> byte compare.
  * Every case file in tests/cases/ is stored in canonical form, so a
  * successful round-trip must reproduce the file exactly.

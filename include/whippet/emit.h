@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * Emit interface.
  *
  * M0 only has the textual pass-through: the "emitted" form of a module is

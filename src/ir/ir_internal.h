@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * Internal IR representation shared by the M0 parser, printer and future
  * passes. Handles are 1-based u32 indices; 0 is the null handle.
  */

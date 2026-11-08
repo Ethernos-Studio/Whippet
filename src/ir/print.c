@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * Canonical printer for Whippet IR.
  *
  * The output of this file is the round-trip reference: parsing it again must

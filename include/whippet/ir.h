@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * Whippet IR -- public interface.
  *
  * The text form of Whippet IR is the stable external contract between a

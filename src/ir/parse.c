@@ -1,4 +1,6 @@
 /*
+ * Author: dhjs0000
+ *
  * M0 parser for Whippet IR text.
  *
  * The parser is deliberately strict: it is the only gate between a frontend

@@ -1,3 +1,8 @@
+/*
+ * Whippet -- independent compiler backend.
+ * Author: dhjs0000
+ */
+
 #include "whippet/ir.h"
 
 #include "ir_internal.h"

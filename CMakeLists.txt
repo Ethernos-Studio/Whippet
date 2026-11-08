@@ -1,3 +1,6 @@
+# Whippet -- independent compiler backend.
+# Author: dhjs0000
+
 cmake_minimum_required(VERSION 3.20)
 project(whippet VERSION 0.1.0 LANGUAGES C)
 

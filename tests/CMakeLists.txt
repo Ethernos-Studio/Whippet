@@ -1,3 +1,6 @@
+# Whippet -- independent compiler backend.
+# Author: dhjs0000
+
 add_executable(test_ir_roundtrip test_ir_roundtrip.c)
 target_link_libraries(test_ir_roundtrip PRIVATE whippet_core)
 whippet_copy_sanitizer_runtime(test_ir_roundtrip)

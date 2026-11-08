@@ -4,6 +4,10 @@ Ethernos Studio 的独立编译器后端。接收前端产出的 Whippet IR，�
 x86-64 代码生成。设计见 [design/WHIPPET_DESIGN.md](design/WHIPPET_DESIGN.md)，
 M0 脚手架见 [design/WHIPPET_M0_SCAFFOLD.md](design/WHIPPET_M0_SCAFFOLD.md)。
 
+作者：dhjs0000
+
+许可证：[MIT](LICENSE)。
+
 当前仓库已完成 **M0**：
 
 - Whippet IR 文本（`.wir`）的完整词法/语法解析；
