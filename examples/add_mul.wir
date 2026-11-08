@@ -1,0 +1,6 @@
+func @add_mul(i32 %a, i32 %b) -> i32 {
+entry:
+  %v0 = mul i32 %a, 4
+  %v1 = add i32 %v0, %b
+  ret i32 %v1
+}

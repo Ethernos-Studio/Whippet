@@ -147,7 +147,8 @@ Windows/Clang 配置下 CTest 会执行：
 - `asm_int_ops`：算术、移位、有符号/无符号除法、比较、select、cast、
   i8/i16/i32/i64、spill、callee-saved、phi 交换环，逐项与 C 期望比对；
 - `asm_switch`：条件分支 + switch 比较链；
-- `asm_differential`：随机整数 IR vs 等价 C（Windows/Clang + Python）。
+- `asm_differential`：随机整数 IR vs 等价 C（Windows/Clang + Python）；
+- `examples`：运行 `examples/run_examples.ps1` 的全部示例。
 
 ```console
 $ whippet tests/cases/basic.wir

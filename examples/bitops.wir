@@ -1,0 +1,11 @@
+func @mix(i32 %x, i32 %y) -> i32 {
+entry:
+  %sum = add i32 %x, %y
+  %xored = xor i32 %sum, %y
+  %shifted = shl i32 %xored, 2
+  %logical = lshr i32 %shifted, 1
+  %masked = and i32 %logical, 255
+  %big = icmp sgt i32 %masked, 100
+  %selected = select i32 %big, i32 %masked, i32 100
+  ret i32 %selected
+}

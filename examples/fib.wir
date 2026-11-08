@@ -1,0 +1,26 @@
+func @fib(i32 %n) -> i32 {
+entry:
+  %is_zero = icmp eq i32 %n, 0
+  condbr i32 %is_zero, zero, check_one
+zero:
+  ret i32 0
+check_one:
+  %is_one = icmp eq i32 %n, 1
+  condbr i32 %is_one, one, loop_entry
+one:
+  ret i32 1
+loop_entry:
+  br loop
+loop:
+  %i = phi i32 [2, loop_entry], [%next_i, body]
+  %a = phi i32 [0, loop_entry], [%b, body]
+  %b = phi i32 [1, loop_entry], [%sum, body]
+  %done = icmp sgt i32 %i, %n
+  condbr i32 %done, exit, body
+body:
+  %sum = add i32 %a, %b
+  %next_i = add i32 %i, 1
+  br loop
+exit:
+  ret i32 %b
+}

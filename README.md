@@ -34,6 +34,7 @@ whippet/
 │   ├── emit/as.c           # 文本/汇编发射入口
 │   └── cli/main.c          # whippet 命令行
 ├── tests/                  # IR/诊断/汇编测试 + canonical 用例
+├── examples/               # 可直接汇编/链接/运行的 M1 示例 + 一键脚本
 ├── docs/IR_TEXT.md         # IR 文本契约（语法参考）
 ├── docs/M1_BACKEND.md      # M1 后端：ABI、寄存器、指令选择、限制
 └── design/                 # 设计文档随仓库走
@@ -108,15 +109,28 @@ add_mul:
   ret
 ```
 
+## 示例
+
+[examples/](examples) 下有一组可直接汇编/链接/运行的 M1 示例（add_mul、
+迭代 fib、switch、位运算，以及自包含 `main` 的 exit42）。Windows 下一条命令：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\examples\run_examples.ps1
+```
+
+脚本会自动加载 Visual Studio 环境（供 clang 链接 CRT），逐个生成汇编、链接、
+运行并校验输出。手动命令与每个示例的期望输出见
+[examples/README.md](examples/README.md)。
+
 ## 测试
 
 ```console
 $ ctest --test-dir build --output-on-failure
 ...
-100% tests passed, 0 tests failed out of 12
+100% tests passed, 0 tests failed out of 13
 ```
 
-Windows/Clang 配置下共 12 项；GCC/MinGW 构建会跳过 5 项 Windows ABI
+Windows/Clang 配置下共 13 项；GCC/MinGW 构建会跳过 6 项 Windows ABI
 端到端测试（仍保留 IR/汇编文本检查）。
 
 - `tests/cases/*.wir` 以 canonical 形式保存，round-trip 必须逐字节一致；
@@ -128,7 +142,9 @@ Windows/Clang 配置下共 12 项；GCC/MinGW 构建会跳过 5 项 Windows ABI
 - `asm_add_mul` / `asm_sum_to` / `asm_int_ops` / `asm_switch`：Windows/Clang
   下生成汇编、汇编链接 C driver、运行并比对期望值；
 - `asm_differential`：随机整数 IR vs 等价 C，经 whippet 与 clang 分别编译
-  后逐输入比对（Windows/Clang + Python）。
+  后逐输入比对（Windows/Clang + Python）；
+- `examples`：运行 `examples/` 下的完整示例（add_mul、fib、classify、bitops、
+  exit42），验证一键脚本与示例输出。
 
 ## IR 文本契约
 

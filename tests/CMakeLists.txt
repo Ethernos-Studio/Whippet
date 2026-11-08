@@ -12,6 +12,11 @@ set(WHIPPET_ROUNDTRIP_CASES
     ${CMAKE_CURRENT_SOURCE_DIR}/cases/ops.wir
     ${CMAKE_CURRENT_SOURCE_DIR}/cases/calls.wir
     ${CMAKE_CURRENT_SOURCE_DIR}/cases/int_ops.wir
+    ${CMAKE_SOURCE_DIR}/examples/add_mul.wir
+    ${CMAKE_SOURCE_DIR}/examples/fib.wir
+    ${CMAKE_SOURCE_DIR}/examples/classify.wir
+    ${CMAKE_SOURCE_DIR}/examples/bitops.wir
+    ${CMAKE_SOURCE_DIR}/examples/exit42.wir
 )
 add_test(NAME ir_roundtrip
          COMMAND test_ir_roundtrip ${WHIPPET_ROUNDTRIP_CASES})
@@ -105,5 +110,14 @@ if(WIN32
                          --functions 40
                          --ops 12
                          --seed 20261108)
+    endif()
+
+    find_program(POWERSHELL_EXECUTABLE powershell)
+    if(POWERSHELL_EXECUTABLE)
+        add_test(NAME examples
+                 COMMAND ${POWERSHELL_EXECUTABLE} -NoProfile
+                         -ExecutionPolicy Bypass
+                         -File ${CMAKE_SOURCE_DIR}/examples/run_examples.ps1
+                         -WhippetPath $<TARGET_FILE:whippet>)
     endif()
 endif()

@@ -1,0 +1,56 @@
+# Whippet 示例（M1）
+
+这些示例使用当前 M1 后端：整数子集 + 分支/`switch`/phi/循环，输出
+Windows x64 GNU as 文本。需要先按仓库根目录的 README 构建 `build/whippet.exe`。
+
+## 一键运行（Windows）
+
+在仓库根目录的 PowerShell 中：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\examples\run_examples.ps1
+```
+
+脚本会尝试自动加载 Visual Studio 的 `vcvars64.bat`（供 clang 链接 CRT），
+然后依次生成汇编、汇编链接、运行并检查输出。
+
+## 手动运行单个示例
+
+```powershell
+# add_mul: 生成汇编 -> 与 C driver 链接 -> 运行
+New-Item -ItemType Directory -Force .\build\examples | Out-Null
+.\build\whippet.exe -S -o .\build\examples\add_mul.s .\examples\add_mul.wir
+clang .\examples\add_mul_driver.c .\build\examples\add_mul.s -o .\build\examples\add_mul.exe
+.\build\examples\add_mul.exe
+```
+
+若链接时报找不到 `link.exe`，先在 “x64 Native Tools Command Prompt for VS”
+里运行，或先 `call` 对应的 `vcvars64.bat`。
+
+## 示例列表
+
+| 文件 | 内容 | 期望输出 |
+| --- | --- | --- |
+| `add_mul.wir` | 设计文档的 `a*4+b` | `add_mul(6, 7) = 31` |
+| `fib.wir` | 迭代 fib，含 phi/循环 | `fib(0..3,10) = 0,1,1,2,55` |
+| `classify.wir` | 条件分支 + 位置式 switch | `0,5,20,30,30` |
+| `bitops.wir` | 算术、移位、比较、select | `100,144,100` |
+| `exit42.wir` | 自包含 `main`，无 C driver | 进程退出码 `42` |
+
+`classify.wir` 的 switch 是**位置式**的：case 索引 0 跳到 `case0`，索引 1
+跳到 `case1`，其余走 `other`。M1 暂时用比较链降低 switch，跳转表是后续优化。
+
+`exit42.wir` 不需要 driver，可以单独验证：
+
+```powershell
+.\build\whippet.exe -S -o .\build\examples\exit42.s .\examples\exit42.wir
+clang .\build\examples\exit42.s -o .\build\examples\exit42.exe
+.\build\examples\exit42.exe
+$LASTEXITCODE   # 42
+```
+
+## 当前限制
+
+M1 不支持函数调用、`alloca/load/store/ptradd`、浮点和超过 4 个参数；
+这些示例都刻意只用当前可用子集。更完整的后端说明见
+[../docs/M1_BACKEND.md](../docs/M1_BACKEND.md)。
