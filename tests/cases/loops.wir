@@ -2,8 +2,8 @@ func @sum_to(i32 %n) -> i32 {
 entry:
   br loop
 loop:
-  %i = phi i32 [0, entry], [%next, loop]
-  %acc = phi i32 [0, entry], [%acc_next, loop]
+  %i = phi i32 [0, entry], [%next, body]
+  %acc = phi i32 [0, entry], [%acc_next, body]
   %done = icmp sgt i32 %i, %n
   condbr i32 %done, exit, body
 body:

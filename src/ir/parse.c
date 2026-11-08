@@ -859,6 +859,8 @@ static bool parse_function(Parser *parser, bool declaration) {
 
     WhippetFunction *function = whippet_function_create(
         parser->module, name, declared_return, declaration);
+    function->location =
+        WHIPPET_LOC_PACK(name_token.line, name_token.column);
     name_map_insert(&parser->functions, parser->arena, name, function->id);
     parser->function = function;
 

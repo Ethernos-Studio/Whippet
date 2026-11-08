@@ -1,0 +1,155 @@
+func @calc(i32 %x) -> i32 {
+entry:
+  %a = add i32 %x, 10
+  %b = mul i32 %a, 3
+  %c = sdiv i32 %b, 2
+  %d = srem i32 %c, 7
+  %e = and i32 %d, 255
+  %f = shl i32 %e, 2
+  %g = lshr i32 %f, 1
+  %h = ashr i32 %g, 1
+  %i = neg i32 %h
+  %j = not i32 %i
+  %k = icmp slt i32 %j, 0
+  %l = select i32 %k, i32 %j, i32 %i
+  ret i32 %l
+}
+
+func @branch(i32 %x) -> i32 {
+entry:
+  %c = icmp sgt i32 %x, 0
+  condbr i32 %c, pos, neg
+pos:
+  ret i32 1
+neg:
+  ret i32 -1
+}
+
+func @small(i8 %a, i16 %b) -> i32 {
+entry:
+  %sa = sext i8 %a to i32
+  %sb = sext i16 %b to i32
+  %sum = add i32 %sa, %sb
+  %n = neg i32 %sum
+  ret i32 %n
+}
+
+func @spill(i32 %x) -> i32 {
+entry:
+  %v0 = add i32 %x, 1
+  %v1 = add i32 %x, 2
+  %v2 = add i32 %x, 3
+  %v3 = add i32 %x, 4
+  %v4 = add i32 %x, 5
+  %v5 = add i32 %x, 6
+  %v6 = add i32 %x, 7
+  %v7 = add i32 %x, 8
+  %v8 = add i32 %x, 9
+  %v9 = add i32 %x, 10
+  %v10 = add i32 %x, 11
+  %v11 = add i32 %x, 12
+  %v12 = add i32 %x, 13
+  %v13 = add i32 %x, 14
+  %v14 = add i32 %x, 15
+  %v15 = add i32 %x, 16
+  %v16 = add i32 %x, 17
+  %v17 = add i32 %x, 18
+  %v18 = add i32 %x, 19
+  %v19 = add i32 %x, 20
+  %s0 = add i32 %v0, %v1
+  %s1 = add i32 %v2, %v3
+  %s2 = add i32 %v4, %v5
+  %s3 = add i32 %v6, %v7
+  %s4 = add i32 %v8, %v9
+  %s5 = add i32 %v10, %v11
+  %s6 = add i32 %v12, %v13
+  %s7 = add i32 %v14, %v15
+  %s8 = add i32 %v16, %v17
+  %s9 = add i32 %v18, %v19
+  %t0 = add i32 %s0, %s1
+  %t1 = add i32 %s2, %s3
+  %t2 = add i32 %s4, %s5
+  %t3 = add i32 %s6, %s7
+  %t4 = add i32 %s8, %s9
+  %u0 = add i32 %t0, %t1
+  %u1 = add i32 %t2, %t3
+  %u2 = add i32 %u0, %u1
+  %u3 = add i32 %u2, %t4
+  ret i32 %u3
+}
+
+func @small_ops(i8 %a, i16 %b) -> i32 {
+entry:
+  %x = add i8 %a, %a
+  %y = shl i16 %b, 2
+  %z = ashr i16 %y, 1
+  %w = lshr i16 %z, 1
+  %n = neg i8 %x
+  %c1 = icmp slt i8 %n, 0
+  %c2 = icmp ugt i16 %w, 3
+  %s1 = zext i8 %n to i32
+  %s2 = sext i16 %w to i32
+  %sum = add i32 %s1, %s2
+  %sel = select i32 %c1, i32 %sum, i32 7
+  %sel2 = select i32 %c2, i32 %sum, i32 %sel
+  ret i32 %sel2
+}
+
+func @wide_ops(i64 %a, i64 %b) -> i64 {
+entry:
+  %sum = add i64 %a, %b
+  %diff = sub i64 %sum, %b
+  %prod = mul i64 %diff, 3
+  %shr = ashr i64 %prod, 2
+  %div = sdiv i64 %shr, 5
+  %rem = srem i64 %div, 7
+  %cmp = icmp sgt i64 %rem, -10
+  %sel = select i32 %cmp, i64 %rem, i64 0
+  ret i64 %sel
+}
+
+func @unsigned_ops(i32 %a, i32 %b) -> i32 {
+entry:
+  %q = udiv i32 %a, %b
+  %r = urem i32 %a, %b
+  %s = shl i32 %q, 1
+  %u = lshr i32 %s, 1
+  %c = icmp ugt i32 %u, %r
+  %v = select i32 %c, i32 %u, i32 %r
+  ret i32 %v
+}
+
+func @signed_ops(i32 %a, i32 %b) -> i32 {
+entry:
+  %q = sdiv i32 %a, %b
+  %r = srem i32 %a, %b
+  %m = mul i32 %q, %b
+  %s = add i32 %m, %r
+  %c = icmp eq i32 %s, %a
+  %v = select i32 %c, i32 %s, i32 0
+  ret i32 %v
+}
+
+func @swap(i32 %n) -> i32 {
+entry:
+  br loop
+loop:
+  %a = phi i32 [1, entry], [%b, body]
+  %b = phi i32 [2, entry], [%a, body]
+  %i = phi i32 [0, entry], [%next, body]
+  %done = icmp sgt i32 %i, %n
+  condbr i32 %done, exit, body
+body:
+  %next = add i32 %i, 1
+  br loop
+exit:
+  ret i32 %a
+}
+
+func @four(i32 %a, i32 %b, i32 %c, i32 %d) -> i32 {
+entry:
+  %ab = add i32 %a, %b
+  %cd = add i32 %c, %d
+  %sum = add i32 %ab, %cd
+  ret i32 %sum
+}

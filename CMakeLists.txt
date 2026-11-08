@@ -2,7 +2,7 @@
 # Author: dhjs0000
 
 cmake_minimum_required(VERSION 3.20)
-project(whippet VERSION 0.1.0 LANGUAGES C)
+project(whippet VERSION 0.2.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -32,7 +32,7 @@ add_library(whippet_core STATIC
     src/regalloc/linear.c
     src/emit/as.c
 )
-target_include_directories(whippet_core PUBLIC include)
+target_include_directories(whippet_core PUBLIC include PRIVATE src)
 target_compile_options(whippet_core PRIVATE ${WHIPPET_WARNING_FLAGS})
 if(WHIPPET_WERROR)
     target_compile_options(whippet_core PRIVATE

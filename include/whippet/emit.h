@@ -1,10 +1,8 @@
 /*
  * Author: dhjs0000
  *
- * Emit interface.
- *
- * M0 only has the textual pass-through: the "emitted" form of a module is
- * its canonical IR text. M1 replaces this with x86-64 GNU as output.
+ * Emit interface for the M0 canonical IR pass-through. M1 assembly emission
+ * is exposed separately by whippet/codegen.h.
  */
 #ifndef WHIPPET_EMIT_H
 #define WHIPPET_EMIT_H

@@ -73,6 +73,7 @@ typedef struct WhippetBlock {
 typedef struct WhippetFunction {
     uint32_t name; /* interned string handle */
     uint32_t id;   /* 1-based function id in the module */
+    uint32_t location;
     WhippetArena *arena;
     struct WhippetFunction *next;
     WhippetBlock *first_block;

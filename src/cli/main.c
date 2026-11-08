@@ -3,6 +3,7 @@
  * Author: dhjs0000
  */
 
+#include "whippet/codegen.h"
 #include "whippet/emit.h"
 #include "whippet/ir.h"
 
@@ -17,13 +18,15 @@
 static void print_usage(FILE *out) {
     fputs("usage: whippet [options] <file.wir>\n"
           "\n"
-          "M0: parse and validate Whippet IR text, then print its canonical form.\n"
+          "M1: parse Whippet IR and emit Windows x64 GNU as text (Intel syntax).\n"
           "\n"
           "options:\n"
-          "  -o <file>    write output to <file> (canonical IR, LF line endings)\n"
-          "  --check      parse and validate only, produce no output\n"
-          "  --version    print the version and exit\n"
-          "  -h, --help   print this help and exit\n",
+          "  -S, --emit-asm   emit assembly (default)\n"
+          "      --emit-ir    print canonical Whippet IR instead\n"
+          "  -o <file>        write output to <file> (LF line endings)\n"
+          "  --check          parse and validate only, produce no output\n"
+          "  --version        print the version and exit\n"
+          "  -h, --help       print this help and exit\n",
           out);
 }
 
@@ -67,10 +70,19 @@ static void print_diagnostic(const char *path, const char *source,
                       diagnostic->column);
 }
 
+static bool emit_output(const WhippetModule *module, FILE *out, bool emit_ir,
+                        WhippetDiagnostic *diagnostic) {
+    if (emit_ir) {
+        return whippet_emit_text(module, out);
+    }
+    return whippet_emit_asm(module, out, diagnostic);
+}
+
 int main(int argc, char **argv) {
     const char *path = NULL;
     const char *output_path = NULL;
     bool check_only = false;
+    bool emit_ir = false;
 
     for (int i = 1; i < argc; ++i) {
         const char *argument = argv[i];
@@ -79,11 +91,19 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (strcmp(argument, "--version") == 0) {
-            puts("whippet 0.1.0 (M0)");
+            puts("whippet 0.2.0 (M1)");
             return 0;
         }
         if (strcmp(argument, "--check") == 0) {
             check_only = true;
+            continue;
+        }
+        if (strcmp(argument, "-S") == 0 || strcmp(argument, "--emit-asm") == 0) {
+            emit_ir = false;
+            continue;
+        }
+        if (strcmp(argument, "--emit-ir") == 0) {
+            emit_ir = true;
             continue;
         }
         if (strcmp(argument, "-o") == 0 || strcmp(argument, "--output") == 0) {
@@ -137,26 +157,34 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "whippet: cannot write '%s'\n", output_path);
                 ok = false;
             } else {
-                ok = whippet_emit_text(module, out);
+                ok = emit_output(module, out, emit_ir, &diagnostic);
                 if (fclose(out) != 0) {
                     ok = false;
                 }
                 if (!ok) {
-                    fprintf(stderr, "whippet: failed to write '%s'\n",
-                            output_path);
+                    if (!emit_ir) {
+                        print_diagnostic(path, source, length, &diagnostic);
+                    } else {
+                        fprintf(stderr, "whippet: failed to write '%s'\n",
+                                output_path);
+                    }
                 }
             }
         } else {
 #if defined(_WIN32)
-            /* The IR text contract is LF-only; do not let the CRT rewrite it. */
+            /* The output contract is LF-only; do not let the CRT rewrite it. */
             _setmode(_fileno(stdout), _O_BINARY);
 #endif
-            ok = whippet_emit_text(module, stdout);
+            ok = emit_output(module, stdout, emit_ir, &diagnostic);
             if (ok) {
                 ok = fflush(stdout) == 0;
             }
             if (!ok) {
-                fputs("whippet: failed to write output\n", stderr);
+                if (!emit_ir) {
+                    print_diagnostic(path, source, length, &diagnostic);
+                } else {
+                    fputs("whippet: failed to write output\n", stderr);
+                }
             }
         }
     }
