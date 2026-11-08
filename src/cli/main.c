@@ -4,12 +4,18 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(_WIN32)
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 static void print_usage(FILE *out) {
     fputs("usage: whippet [options] <file.wir>\n"
           "\n"
           "M0: parse and validate Whippet IR text, then print its canonical form.\n"
           "\n"
           "options:\n"
+          "  -o <file>    write output to <file> (canonical IR, LF line endings)\n"
           "  --check      parse and validate only, produce no output\n"
           "  --version    print the version and exit\n"
           "  -h, --help   print this help and exit\n",
@@ -58,6 +64,7 @@ static void print_diagnostic(const char *path, const char *source,
 
 int main(int argc, char **argv) {
     const char *path = NULL;
+    const char *output_path = NULL;
     bool check_only = false;
 
     for (int i = 1; i < argc; ++i) {
@@ -72,6 +79,15 @@ int main(int argc, char **argv) {
         }
         if (strcmp(argument, "--check") == 0) {
             check_only = true;
+            continue;
+        }
+        if (strcmp(argument, "-o") == 0 || strcmp(argument, "--output") == 0) {
+            if (i + 1 >= argc) {
+                fprintf(stderr, "whippet: '%s' requires a file name\n",
+                        argument);
+                return 2;
+            }
+            output_path = argv[++i];
             continue;
         }
         if (argument[0] == '-' && argument[1] != '\0') {
@@ -110,12 +126,33 @@ int main(int argc, char **argv) {
 
     bool ok = true;
     if (!check_only) {
-        ok = whippet_emit_text(module, stdout);
-        if (ok) {
-            ok = fflush(stdout) == 0;
-        }
-        if (!ok) {
-            fputs("whippet: failed to write output\n", stderr);
+        if (output_path != NULL) {
+            FILE *out = fopen(output_path, "wb");
+            if (out == NULL) {
+                fprintf(stderr, "whippet: cannot write '%s'\n", output_path);
+                ok = false;
+            } else {
+                ok = whippet_emit_text(module, out);
+                if (fclose(out) != 0) {
+                    ok = false;
+                }
+                if (!ok) {
+                    fprintf(stderr, "whippet: failed to write '%s'\n",
+                            output_path);
+                }
+            }
+        } else {
+#if defined(_WIN32)
+            /* The IR text contract is LF-only; do not let the CRT rewrite it. */
+            _setmode(_fileno(stdout), _O_BINARY);
+#endif
+            ok = whippet_emit_text(module, stdout);
+            if (ok) {
+                ok = fflush(stdout) == 0;
+            }
+            if (!ok) {
+                fputs("whippet: failed to write output\n", stderr);
+            }
         }
     }
 
