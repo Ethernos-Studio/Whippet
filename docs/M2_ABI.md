@@ -141,6 +141,7 @@ Windows/Clang CTest：
 
 ## 9. 后续
 
-- **M3**：内部汇编器 + COFF 直写、O1 中端流水线、编译速度；
+- **M3（核心已完成）**：内部汇编器 + COFF 直写、O1 常量/copy/DCE/强度削减；
+  见 [M3.md](M3.md)；块清理/O2 仍待补；
 - **M4**：浮点/XMM、struct/union、-O2；
 - 后续可选：栈探测、unwind info、跳转表、尾调用、可变参数。

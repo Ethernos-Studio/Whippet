@@ -486,6 +486,11 @@ bool whippet_regalloc_run(MFunction *function, WhippetDiagnostic *diagnostic) {
     for (uint32_t i = 0; i < value_count; ++i) {
         LiveInterval *interval = &intervals[i];
 
+        if (interval->value <= fn->value_count &&
+            fn->values[interval->value - 1u].type == WHIPPET_TYPE_VOID) {
+            continue; /* deleted by an earlier optimization pass */
+        }
+
         if (interval->force_stack) {
             assign_stack(function, interval, &next_slot);
             continue;

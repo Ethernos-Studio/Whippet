@@ -20,6 +20,14 @@ extern "C" {
 bool whippet_emit_asm(const WhippetModule *module, FILE *out,
                       WhippetDiagnostic *diagnostic);
 
+/*
+ * M3 internal assembler: emits a COFF x86-64 object file (.obj) directly,
+ * without invoking an external assembler. Supports the instruction subset
+ * produced by the M1/M2 backend.
+ */
+bool whippet_emit_object(const WhippetModule *module, FILE *out,
+                         WhippetDiagnostic *diagnostic);
+
 #ifdef __cplusplus
 }
 #endif

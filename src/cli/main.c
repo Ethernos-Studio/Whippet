@@ -6,6 +6,7 @@
 #include "whippet/codegen.h"
 #include "whippet/emit.h"
 #include "whippet/ir.h"
+#include "whippet/passes.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -18,12 +19,15 @@
 static void print_usage(FILE *out) {
     fputs("usage: whippet [options] <file.wir>\n"
           "\n"
-          "M2: parse Whippet IR and emit Windows x64 GNU as text (Intel syntax).\n"
+          "M3: parse Whippet IR and emit Windows x64 output.\n"
           "\n"
           "options:\n"
-          "  -S, --emit-asm   emit assembly (default)\n"
+          "  -S, --emit-asm   emit GNU as text (default)\n"
+          "  -c, --emit-obj   emit a COFF object directly (internal assembler)\n"
           "      --emit-ir    print canonical Whippet IR instead\n"
-          "  -o <file>        write output to <file> (LF line endings)\n"
+          "  -o <file>        write output to <file>\n"
+          "  -O0              disable optimization\n"
+          "  -O1              enable O1 passes (default)\n"
           "  --check          parse and validate only, produce no output\n"
           "  --version        print the version and exit\n"
           "  -h, --help       print this help and exit\n",
@@ -70,10 +74,19 @@ static void print_diagnostic(const char *path, const char *source,
                       diagnostic->column);
 }
 
-static bool emit_output(const WhippetModule *module, FILE *out, bool emit_ir,
-                        WhippetDiagnostic *diagnostic) {
-    if (emit_ir) {
+typedef enum OutputMode {
+    OUTPUT_ASM = 0,
+    OUTPUT_IR,
+    OUTPUT_OBJECT
+} OutputMode;
+
+static bool emit_output(const WhippetModule *module, FILE *out,
+                        OutputMode mode, WhippetDiagnostic *diagnostic) {
+    if (mode == OUTPUT_IR) {
         return whippet_emit_text(module, out);
+    }
+    if (mode == OUTPUT_OBJECT) {
+        return whippet_emit_object(module, out, diagnostic);
     }
     return whippet_emit_asm(module, out, diagnostic);
 }
@@ -82,7 +95,8 @@ int main(int argc, char **argv) {
     const char *path = NULL;
     const char *output_path = NULL;
     bool check_only = false;
-    bool emit_ir = false;
+    OutputMode output_mode = OUTPUT_ASM;
+    int optimization_level = 1;
 
     for (int i = 1; i < argc; ++i) {
         const char *argument = argv[i];
@@ -91,7 +105,7 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (strcmp(argument, "--version") == 0) {
-            puts("whippet 0.3.0 (M2)");
+            puts("whippet 0.4.0 (M3)");
             return 0;
         }
         if (strcmp(argument, "--check") == 0) {
@@ -99,11 +113,23 @@ int main(int argc, char **argv) {
             continue;
         }
         if (strcmp(argument, "-S") == 0 || strcmp(argument, "--emit-asm") == 0) {
-            emit_ir = false;
+            output_mode = OUTPUT_ASM;
+            continue;
+        }
+        if (strcmp(argument, "-c") == 0 || strcmp(argument, "--emit-obj") == 0) {
+            output_mode = OUTPUT_OBJECT;
             continue;
         }
         if (strcmp(argument, "--emit-ir") == 0) {
-            emit_ir = true;
+            output_mode = OUTPUT_IR;
+            continue;
+        }
+        if (strcmp(argument, "-O0") == 0) {
+            optimization_level = 0;
+            continue;
+        }
+        if (strcmp(argument, "-O1") == 0) {
+            optimization_level = 1;
             continue;
         }
         if (strcmp(argument, "-o") == 0 || strcmp(argument, "--output") == 0) {
@@ -150,19 +176,24 @@ int main(int argc, char **argv) {
     }
 
     bool ok = true;
-    if (!check_only) {
+    if (!check_only &&
+        !whippet_optimize_module(module, optimization_level, &diagnostic)) {
+        print_diagnostic(path, source, length, &diagnostic);
+        ok = false;
+    }
+    if (ok && !check_only) {
         if (output_path != NULL) {
             FILE *out = fopen(output_path, "wb");
             if (out == NULL) {
                 fprintf(stderr, "whippet: cannot write '%s'\n", output_path);
                 ok = false;
             } else {
-                ok = emit_output(module, out, emit_ir, &diagnostic);
+                ok = emit_output(module, out, output_mode, &diagnostic);
                 if (fclose(out) != 0) {
                     ok = false;
                 }
                 if (!ok) {
-                    if (!emit_ir) {
+                    if (output_mode != OUTPUT_IR) {
                         print_diagnostic(path, source, length, &diagnostic);
                     } else {
                         fprintf(stderr, "whippet: failed to write '%s'\n",
@@ -172,15 +203,15 @@ int main(int argc, char **argv) {
             }
         } else {
 #if defined(_WIN32)
-            /* The output contract is LF-only; do not let the CRT rewrite it. */
+            /* Keep text and object output byte-exact; no CRT newline rewrite. */
             _setmode(_fileno(stdout), _O_BINARY);
 #endif
-            ok = emit_output(module, stdout, emit_ir, &diagnostic);
+            ok = emit_output(module, stdout, output_mode, &diagnostic);
             if (ok) {
                 ok = fflush(stdout) == 0;
             }
             if (!ok) {
-                if (!emit_ir) {
+                if (output_mode != OUTPUT_IR) {
                     print_diagnostic(path, source, length, &diagnostic);
                 } else {
                     fputs("whippet: failed to write output\n", stderr);

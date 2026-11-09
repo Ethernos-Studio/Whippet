@@ -8,7 +8,7 @@ M0 脚手架见 [design/WHIPPET_M0_SCAFFOLD.md](design/WHIPPET_M0_SCAFFOLD.md)�
 
 许可证：[MIT](LICENSE)。
 
-当前仓库已完成 **M0 + M1 + M2**：
+当前仓库已完成 **M0 + M1 + M2 + M3 核心**：
 
 - **M0**：Whippet IR 文本（`.wir`）的完整词法/语法解析；严格校验未知
   opcode/类型/谓词、重复定义、未定义引用、phi 位置、块终止、类型与 cast
@@ -21,27 +21,34 @@ M0 脚手架见 [design/WHIPPET_M0_SCAFFOLD.md](design/WHIPPET_M0_SCAFFOLD.md)�
   shadow space 与 16 字节调用点对齐、完整栈帧、`alloca/load/store/ptradd`、
   指针跨调用；验收递归 `fib_rec(10)=55`、`fib_rec(20)=6765`，栈参数、
   间接调用和内存用例全部汇编/链接/运行正确；
+- **M3 核心**：内部汇编器 + COFF 直写（`-c`，不再必须调用 clang/as）、
+  O1 常量折叠/传播、copy/select 传播、DCE、2 的幂强度削减；20k 指令压力
+  文件 `-c` 约 40k 行/秒（目标 20k）；块清理（空块/不可达块）留待后续；
 - arena + 24 B IR 节点 + u32 句柄（符合 §9.2 内存预算）；
-- `ctest` 覆盖 IR round-trip、20 个错误定位、CLI、以及端到端汇编/链接/运行。
+- `ctest` 覆盖 IR round-trip、20 个错误定位、CLI、O1、COFF 对象，以及端到端
+  汇编/链接/运行。
 
 ## 目录
 
 ```
 whippet/
 ├── CMakeLists.txt
-├── include/whippet/        # 公共 API：ir.h、emit.h、codegen.h
+├── include/whippet/        # 公共 API：ir.h、emit.h、codegen.h、passes.h
 ├── src/
 │   ├── ir/                 # M0：arena、节点池、解析、校验、打印
-│   ├── mid/passes.c        # M3：-O1 pass 流水线（占位）
+│   ├── mid/passes.c        # M3：O1 常量/copy/DCE/强度削减
 │   ├── isel/isel.c         # M1/M2：指令选择 + 调用/栈帧/内存 + GNU as 文本
 │   ├── regalloc/linear.c   # M1/M2：线性扫描、phi 边、调用感知分配
 │   ├── emit/as.c           # 文本/汇编发射入口
+│   ├── emit/coff.c         # M3：内部汇编器 + COFF 对象
 │   └── cli/main.c          # whippet 命令行
-├── tests/                  # IR/诊断/汇编测试 + canonical 用例
+├── tests/                  # IR/诊断/O1/汇编/COFF 测试 + canonical 用例
 ├── examples/               # 可直接汇编/链接/运行的 M2 示例 + 一键脚本
 ├── docs/IR_TEXT.md         # IR 文本契约（语法参考）
 ├── docs/M1_BACKEND.md      # M1 后端：ABI、寄存器、指令选择、限制
 ├── docs/M2_ABI.md          # M2：调用、栈帧、内存、ABI
+├── docs/M3.md              # M3：内部汇编器、COFF、O1、速度
+├── tools/bench_compile.py  # 20k 指令编译速度基准
 └── design/                 # 设计文档随仓库走
 ```
 
@@ -93,14 +100,24 @@ Windows 下 CMake 会把 Clang 的 `clang_rt.asan_dynamic-x86_64.dll` 自动复�
 ## 命令行
 
 ```text
-whippet [-S|--emit-ir] [-o <file>] [--check] <file.wir>
+whippet [-S|-c|--emit-ir] [-O0|-O1] [-o <file>] [--check] <file.wir>
 ```
 
-- 默认（`-S` / `--emit-asm`）：解析、校验、生成 Windows x64 GNU as 文本；
-- `--emit-ir`：打印 canonical IR（M0 调试路径）；
+- 默认（`-S` / `--emit-asm`）：解析、O1、生成 Windows x64 GNU as 文本；
+- `-c` / `--emit-obj`：内部汇编器直接生成 COFF `.obj`（推荐交给 clang 链接）；
+- `--emit-ir`：打印 canonical IR（默认已过 O1，`-O0` 可看原始 IR）；
+- `-O1`：默认；常量/copy 传播、DCE、2 的幂强度削减；
+- `-O0`：关闭优化（调试/对照）；
 - `-o <file>`：写文件而不是 stdout（二进制写，保证 LF）；
 - `--check`：只解析校验；
 - 出错时输出 `path:line:column: error: message`，并打印对应源码行与 `^`。
+
+```console
+$ whippet -c -o add_mul.obj tests/cases/basic.wir
+$ clang driver.c add_mul.obj -o test.exe
+```
+
+`-S` 仍可得到可读汇编；`-c` 不启动外部汇编器。
 
 ```console
 $ whippet tests/cases/basic.wir
@@ -117,8 +134,8 @@ add_mul:
 ## 示例
 
 [examples/](examples) 下有一组可直接汇编/链接/运行的 M2 示例（add_mul、
-迭代/递归 fib、switch、位运算、指针/内存、CRT hello，以及 exit42）。
-Windows 下一条命令：
+迭代/递归 fib、switch、位运算、指针/内存、CRT hello，以及 exit42）；
+CLI 默认走 O1，示例脚本仍用 `-S` 文本路径。Windows 下一条命令：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\examples\run_examples.ps1
@@ -133,24 +150,27 @@ powershell -ExecutionPolicy Bypass -File .\examples\run_examples.ps1
 ```console
 $ ctest --test-dir build --output-on-failure
 ...
-100% tests passed, 0 tests failed out of 15
+100% tests passed, 0 tests failed out of 20
 ```
 
-Windows/Clang 配置下共 15 项；GCC/MinGW 构建会跳过 8 项 Windows ABI
-端到端测试（仍保留 IR/汇编文本检查）。
+Windows/Clang 配置下共 20 项；GCC/MinGW 构建会跳过 12 项 Windows ABI/COFF
+端到端测试（仍保留 IR/O1/文本检查）。
 
 - `tests/cases/*.wir` 以 canonical 形式保存，round-trip 必须逐字节一致；
 - `test_ir_errors` 断言非法输入被拒绝，并核对诊断行列；
 - `test_ir_metadata` 检查 opcode/类型/谓词表自洽与空模块；
 - `test_ir_normalize` 验证 BOM/注释/CRLF/十六进制/指数浮点的归一化；
 - `test_asm` 检查汇编生成与“未支持类型”的定位诊断；
-- `cli_emit` 端到端验证 `--emit-ir` 写出的文件与 canonical 用例一致；
-- `asm_add_mul` / `asm_sum_to` / `asm_int_ops` / `asm_switch`：Windows/Clang
-  下生成汇编、汇编链接 C driver、运行并比对期望值；
-- `asm_m2_calls`：递归、栈参数、间接调用、外部 CRT 调用；
+- `opt_pipeline` 检查常量/copy/DCE/强度削减，以及优化后 IR 仍可 round-trip；
+- `cli_emit` 用 `-O0` 端到端验证 canonical IR；
+- `asm_add_mul` / `asm_sum_to` / `asm_int_ops` / `asm_switch`：默认 O1，
+  生成汇编、链接 C driver、运行并比对期望值；
+- `asm_m2_calls`：递归、栈参数、间接调用、外部 CRT 调用、i64/i8；
 - `asm_m2_memory`：alloca/load/store、指针跨调用、i8/i16/i32/i64 宽度；
-- `asm_differential`：随机整数 IR vs 等价 C，经 whippet 与 clang 分别编译
-  后逐输入比对（Windows/Clang + Python）；
+- `obj_add_mul` / `obj_sum_to` / `obj_m2_calls` / `obj_m2_memory`：`-c` 生成
+  COFF，链接 C driver 并运行；
+- `asm_differential`：随机整数 IR vs 等价 C，默认 O1，经 whippet 与 clang
+  分别编译后逐输入比对；
 - `examples`：运行 `examples/` 下的完整示例，验证一键脚本与示例输出。
 
 ## IR 文本契约
@@ -175,11 +195,14 @@ GNU as（Intel 语法）文本。
   [docs/M1_BACKEND.md](docs/M1_BACKEND.md)；
 - M2：函数调用（直接/间接/递归/外部 C）、栈参数、shadow space、调用点
   16 字节对齐、完整栈帧、`alloca/load/store/ptradd`、指针跨调用；
-  细节见 [docs/M2_ABI.md](docs/M2_ABI.md)。
+  细节见 [docs/M2_ABI.md](docs/M2_ABI.md)；
+- M3 核心：内部汇编器 + COFF 直写（`-c`）、O1 常量/copy 传播、DCE、
+  2 的幂强度削减、20k 行/秒目标；见 [docs/M3.md](docs/M3.md)。
 
 当前仍明确不支持（会给出 `path:line:column` 诊断）：全部浮点、可变参数、
 超过 4096 字节的栈帧（栈探测尚未实现）、unwind info。浮点排到 M4；
-`switch` 已用比较链正确降级，跳转表发射留待后续。
+`switch` 已用比较链正确降级，跳转表发射留待后续。M3 的块清理
+（空块/不可达块）、O2/GVN、数据段/全局变量仍待补齐。
 
 ## 工程纪律
 

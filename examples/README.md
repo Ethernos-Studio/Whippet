@@ -1,7 +1,8 @@
-# Whippet 示例（M2）
+# Whippet 示例（M2/M3）
 
-这些示例使用当前 M2 后端：整数子集、分支/`switch`/phi/循环、函数调用、
-栈参数、递归、alloca/load/store/指针，输出 Windows x64 GNU as 文本。
+这些示例使用当前后端：整数子集、分支/`switch`/phi/循环、函数调用、
+栈参数、递归、alloca/load/store/指针。CLI 默认走 O1；脚本用 `-S` 输出
+Windows x64 GNU as 文本，也可以按 `docs/M3.md` 用 `-c` 直接生成 COFF。
 需要先按仓库根目录的 README 构建 `build/whippet.exe`。
 
 ## 一键运行（Windows）
@@ -23,6 +24,11 @@ New-Item -ItemType Directory -Force .\build\examples | Out-Null
 .\build\whippet.exe -S -o .\build\examples\add_mul.s .\examples\add_mul.wir
 clang .\examples\add_mul_driver.c .\build\examples\add_mul.s -o .\build\examples\add_mul.exe
 .\build\examples\add_mul.exe
+
+# 或者内部汇编器直出 COFF
+.\build\whippet.exe -c -o .\build\examples\add_mul.obj .\examples\add_mul.wir
+clang .\examples\add_mul_driver.c .\build\examples\add_mul.obj -o .\build\examples\add_mul_obj.exe
+.\build\examples\add_mul_obj.exe
 ```
 
 若链接时报找不到 `link.exe`，先在 “x64 Native Tools Command Prompt for VS”

@@ -1414,12 +1414,13 @@ static bool emit_function(AsmBuffer *buffer, const WhippetModule *module,
     return true;
 }
 
-bool whippet_codegen_module_asm(const WhippetModule *module, FILE *out,
-                                WhippetDiagnostic *diagnostic) {
+bool whippet_codegen_module_asm_to_text(const WhippetModule *module,
+                                        WhippetArena *arena,
+                                        WhippetText *out,
+                                        WhippetDiagnostic *diagnostic) {
     if (diagnostic != NULL) {
         memset(diagnostic, 0, sizeof(*diagnostic));
     }
-    WhippetArena *arena = whippet_arena_create();
     AsmBuffer buffer;
     memset(&buffer, 0, sizeof(buffer));
     buffer.arena = arena;
@@ -1436,15 +1437,24 @@ bool whippet_codegen_module_asm(const WhippetModule *module, FILE *out,
         }
         first = false;
         if (!emit_function(&buffer, module, function, diagnostic)) {
-            whippet_arena_destroy(arena);
             return false;
         }
     }
+    *out = buffer.text;
+    return true;
+}
 
-    bool ok = fwrite(buffer.text.data, 1, buffer.text.length, out) ==
-              buffer.text.length;
-    if (!ok && diagnostic != NULL) {
-        memset(diagnostic, 0, sizeof(*diagnostic));
+bool whippet_codegen_module_asm(const WhippetModule *module, FILE *out,
+                                WhippetDiagnostic *diagnostic) {
+    WhippetArena *arena = whippet_arena_create();
+    WhippetText text;
+    memset(&text, 0, sizeof(text));
+    bool ok = whippet_codegen_module_asm_to_text(module, arena, &text,
+                                                 diagnostic);
+    if (ok) {
+        ok = fwrite(text.data, 1, text.length, out) == text.length;
+    }
+    if (!ok && diagnostic != NULL && diagnostic->message[0] == '\0') {
         diagnostic->line = 0;
         diagnostic->column = 0;
         snprintf(diagnostic->message, sizeof(diagnostic->message),

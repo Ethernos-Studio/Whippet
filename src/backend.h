@@ -73,4 +73,9 @@ bool whippet_regalloc_run(MFunction *function, WhippetDiagnostic *diagnostic);
 bool whippet_codegen_module_asm(const WhippetModule *module, FILE *out,
                                 WhippetDiagnostic *diagnostic);
 
+/* Same, but returns the text in arena memory (used by the COFF assembler). */
+bool whippet_codegen_module_asm_to_text(const WhippetModule *module,
+                                        WhippetArena *arena, WhippetText *out,
+                                        WhippetDiagnostic *diagnostic);
+
 #endif /* WHIPPET_BACKEND_H */
