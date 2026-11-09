@@ -1,6 +1,6 @@
 # Author: dhjs0000
 #
-# Build and run the M1 examples. Windows x64 only: the generated code targets
+# Build and run the examples. Windows x64 only: the generated code targets
 # the MSVC ABI and is linked with clang + the Visual Studio CRT.
 
 [CmdletBinding()]
@@ -107,8 +107,11 @@ function Invoke-Example {
 
 Invoke-Example -Name 'add_mul' -IrFile 'add_mul.wir' -Driver 'add_mul_driver.c' -ExpectedExit 0
 Invoke-Example -Name 'fib' -IrFile 'fib.wir' -Driver 'fib_driver.c' -ExpectedExit 0
+Invoke-Example -Name 'fib_rec' -IrFile 'fib_rec.wir' -Driver 'fib_rec_driver.c' -ExpectedExit 0
 Invoke-Example -Name 'classify' -IrFile 'classify.wir' -Driver 'classify_driver.c' -ExpectedExit 0
 Invoke-Example -Name 'bitops' -IrFile 'bitops.wir' -Driver 'bitops_driver.c' -ExpectedExit 0
+Invoke-Example -Name 'pointers' -IrFile 'pointers.wir' -Driver 'pointers_driver.c' -ExpectedExit 0
+Invoke-Example -Name 'hello' -IrFile 'hello.wir' -Driver '' -ExpectedExit 0
 Invoke-Example -Name 'exit42' -IrFile 'exit42.wir' -Driver '' -ExpectedExit 42
 
 Write-Host 'all examples passed'

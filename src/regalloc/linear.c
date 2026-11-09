@@ -1,7 +1,7 @@
 /*
  * Author: dhjs0000
  *
- * Poletto-Sarkar linear scan for the M1 integer subset.
+ * Poletto-Sarkar linear scan for the M1/M2 integer subset.
  *
  * Locations are chosen for every SSA value: a physical register or an
  * rsp-relative stack slot. Phi results are deliberately forced to stack
@@ -32,8 +32,15 @@ static const MReg kAllocatable[] = {
     MREG_RSI, MREG_RDI, MREG_R12, MREG_R13, MREG_R14, MREG_R15,
 };
 
+static const MReg kCalleeSavedOnly[] = {
+    MREG_RBX, MREG_RBP, MREG_RSI, MREG_RDI,
+    MREG_R12, MREG_R13, MREG_R14, MREG_R15,
+};
+
 #define WHIPPET_ALLOCATABLE_COUNT \
     ((uint32_t)(sizeof(kAllocatable) / sizeof(kAllocatable[0])))
+#define WHIPPET_CALLEE_SAVED_COUNT \
+    ((uint32_t)(sizeof(kCalleeSavedOnly) / sizeof(kCalleeSavedOnly[0])))
 
 static bool reg_is_callee_saved(MReg reg) {
     switch (reg) {
@@ -86,8 +93,8 @@ static void assign_stack(MFunction *function, LiveInterval *interval,
                          uint32_t *next_slot) {
     uint32_t slot;
     if (interval->value <= function->param_count) {
-        /* Parameters have reserved staging slots at the bottom of the frame. */
-        slot = interval->value - 1u;
+        /* Parameters have reserved staging slots after the call/alloca area. */
+        slot = function->param_base_slot + interval->value - 1u;
     } else {
         slot = *next_slot;
         *next_slot += 1u;
@@ -423,6 +430,30 @@ bool whippet_regalloc_run(MFunction *function, WhippetDiagnostic *diagnostic) {
     }
 
     function->param_count = fn->param_count;
+    function->alloca_slots = 0;
+    function->alloca_offsets = (int32_t *)whippet_arena_alloc(
+        scratch,
+        (size_t)(function->module->node_count + 1u) * sizeof(int32_t), 8);
+    memset(function->alloca_offsets, 0,
+           (size_t)(function->module->node_count + 1u) * sizeof(int32_t));
+    uint32_t alloca_index = 0;
+    for (WhippetBlock *block = fn->first_block; block != NULL;
+         block = block->next) {
+        const WhippetInstr *instruction = NULL;
+        for (uint32_t handle = block->first; handle != WHIPPET_HANDLE_NONE;
+             handle = instruction->next) {
+            instruction = whippet_module_node(function->module, handle);
+            if ((WhippetOpcode)instruction->opcode == WHIPPET_OP_ALLOCA) {
+                function->alloca_offsets[handle] = (int32_t)(
+                    (function->call_area_slots + alloca_index) * 8u);
+                alloca_index += 1u;
+            }
+        }
+    }
+    function->alloca_slots = alloca_index;
+    function->param_base_slot =
+        function->call_area_slots + function->alloca_slots;
+
     function->locations = (MLocation *)whippet_arena_alloc(
         scratch, (size_t)(value_count + 1u) * sizeof(MLocation), 8);
     memset(function->locations, 0,
@@ -435,9 +466,13 @@ bool whippet_regalloc_run(MFunction *function, WhippetDiagnostic *diagnostic) {
 
     MReg free_regs[WHIPPET_ALLOCATABLE_COUNT];
     uint32_t free_count = 0;
-    /* Push in reverse so the first pop gives a caller-saved register. */
-    for (uint32_t i = WHIPPET_ALLOCATABLE_COUNT; i > 0; --i) {
-        free_regs[free_count++] = kAllocatable[i - 1u];
+    const MReg *register_pool =
+        function->has_calls ? kCalleeSavedOnly : kAllocatable;
+    uint32_t register_pool_count =
+        function->has_calls ? WHIPPET_CALLEE_SAVED_COUNT
+                            : WHIPPET_ALLOCATABLE_COUNT;
+    for (uint32_t i = register_pool_count; i > 0; --i) {
+        free_regs[free_count++] = register_pool[i - 1u];
     }
 
     uint32_t *active = (uint32_t *)whippet_arena_alloc(
@@ -445,8 +480,8 @@ bool whippet_regalloc_run(MFunction *function, WhippetDiagnostic *diagnostic) {
         8);
     uint32_t active_count = 0;
 
-    /* Reserved parameter staging slots occupy [0, param_count). */
-    uint32_t next_slot = fn->param_count;
+    uint32_t next_slot =
+        function->param_base_slot + fn->param_count;
 
     for (uint32_t i = 0; i < value_count; ++i) {
         LiveInterval *interval = &intervals[i];
@@ -493,11 +528,25 @@ bool whippet_regalloc_run(MFunction *function, WhippetDiagnostic *diagnostic) {
         assign_stack(function, interval, &next_slot);
     }
 
-    function->spill_slots = next_slot - function->param_count;
+    function->spill_slots =
+        next_slot - (function->param_base_slot + fn->param_count);
     function->scratch_base_slot = next_slot;
     uint32_t total_slots = next_slot + function->max_edge_moves;
     uint32_t frame_bytes = total_slots * 8u;
     function->frame_size = (frame_bytes + 15u) & ~15u;
+
+    if (function->has_calls) {
+        uint32_t saved_registers = 0;
+        for (uint32_t i = 0; i < MREG_COUNT; ++i) {
+            if (function->saved_callee[i]) {
+                saved_registers += 1u;
+            }
+        }
+        /* Entry rsp is 8 mod 16; pushes cover the odd/even difference. */
+        if ((saved_registers & 1u) == 0) {
+            function->frame_size += 8u;
+        }
+    }
 
     (void)diagnostic;
     return true;

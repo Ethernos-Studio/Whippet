@@ -12,10 +12,15 @@ set(WHIPPET_ROUNDTRIP_CASES
     ${CMAKE_CURRENT_SOURCE_DIR}/cases/ops.wir
     ${CMAKE_CURRENT_SOURCE_DIR}/cases/calls.wir
     ${CMAKE_CURRENT_SOURCE_DIR}/cases/int_ops.wir
+    ${CMAKE_CURRENT_SOURCE_DIR}/cases/m2_calls.wir
+    ${CMAKE_CURRENT_SOURCE_DIR}/cases/m2_memory.wir
     ${CMAKE_SOURCE_DIR}/examples/add_mul.wir
     ${CMAKE_SOURCE_DIR}/examples/fib.wir
+    ${CMAKE_SOURCE_DIR}/examples/fib_rec.wir
     ${CMAKE_SOURCE_DIR}/examples/classify.wir
     ${CMAKE_SOURCE_DIR}/examples/bitops.wir
+    ${CMAKE_SOURCE_DIR}/examples/pointers.wir
+    ${CMAKE_SOURCE_DIR}/examples/hello.wir
     ${CMAKE_SOURCE_DIR}/examples/exit42.wir
 )
 add_test(NAME ir_roundtrip
@@ -44,7 +49,9 @@ add_test(NAME asm_codegen
                  ${CMAKE_CURRENT_SOURCE_DIR}/cases/basic.wir
                  ${CMAKE_CURRENT_SOURCE_DIR}/cases/loops.wir
                  ${CMAKE_CURRENT_SOURCE_DIR}/cases/int_ops.wir
-                 ${CMAKE_CURRENT_SOURCE_DIR}/cases/control.wir)
+                 ${CMAKE_CURRENT_SOURCE_DIR}/cases/control.wir
+                 ${CMAKE_CURRENT_SOURCE_DIR}/cases/m2_calls.wir
+                 ${CMAKE_CURRENT_SOURCE_DIR}/cases/m2_memory.wir)
 
 # Exercise the CLI emit path (canonical IR and LF line endings) end to end.
 add_test(NAME cli_emit
@@ -97,6 +104,24 @@ if(WIN32
                      -DDRIVER=${CMAKE_CURRENT_SOURCE_DIR}/asm/driver_classify.c
                      -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}
                      -DNAME=switch
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/run_asm_test.cmake)
+    add_test(NAME asm_m2_calls
+             COMMAND ${CMAKE_COMMAND}
+                     -DWHIPPET=$<TARGET_FILE:whippet>
+                     -DCLANG=${CMAKE_C_COMPILER}
+                     -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/cases/m2_calls.wir
+                     -DDRIVER=${CMAKE_CURRENT_SOURCE_DIR}/asm/driver_m2_calls.c
+                     -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}
+                     -DNAME=m2_calls
+                     -P ${CMAKE_CURRENT_SOURCE_DIR}/run_asm_test.cmake)
+    add_test(NAME asm_m2_memory
+             COMMAND ${CMAKE_COMMAND}
+                     -DWHIPPET=$<TARGET_FILE:whippet>
+                     -DCLANG=${CMAKE_C_COMPILER}
+                     -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/cases/m2_memory.wir
+                     -DDRIVER=${CMAKE_CURRENT_SOURCE_DIR}/asm/driver_m2_memory.c
+                     -DWORKDIR=${CMAKE_CURRENT_BINARY_DIR}
+                     -DNAME=m2_memory
                      -P ${CMAKE_CURRENT_SOURCE_DIR}/run_asm_test.cmake)
 
     find_package(Python3 COMPONENTS Interpreter QUIET)

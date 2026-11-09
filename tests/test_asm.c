@@ -115,50 +115,27 @@ static int expect_failure(const char *name, const char *source,
     return 0;
 }
 
-static const char kCallSource[] =
-    "declare void @abort()\n"
-    "\n"
-    "func @f() -> i32 {\n"
-    "entry:\n"
-    "  call void @abort()\n"
-    "  ret i32 0\n"
-    "}\n";
-
-static const char kMemorySource[] =
-    "func @f() -> i32 {\n"
-    "entry:\n"
-    "  %p = alloca i32\n"
-    "  ret i32 0\n"
-    "}\n";
-
 static const char kFloatSource[] =
     "func @f(f32 %x) -> i32 {\n"
     "entry:\n"
     "  ret i32 0\n"
     "}\n";
 
-static const char kManyParamsSource[] =
-    "func @f(i32 %a, i32 %b, i32 %c, i32 %d, i32 %e) -> i32 {\n"
-    "entry:\n"
-    "  ret i32 %a\n"
-    "}\n";
-
 int main(int argc, char **argv) {
-    if (argc < 5) {
+    if (argc < 7) {
         fprintf(stderr,
                 "usage: test_asm <basic.wir> <loops.wir> <int_ops.wir> "
-                "<control.wir>\n");
+                "<control.wir> <m2_calls.wir> <m2_memory.wir>\n");
         return 2;
     }
     failures += check_file(argv[1], "imul", "ret");
     failures += check_file(argv[2], "jne", ".Lwhippet_");
     failures += check_file(argv[3], "push r", "mov qword ptr [rsp");
     failures += check_file(argv[4], "cmp rax", "je ");
+    failures += check_file(argv[5], "call fib_rec", "call rax");
+    failures += check_file(argv[6], "lea rax, [rsp", "byte ptr [rcx]");
 
-    failures += expect_failure("call", kCallSource, "M2");
-    failures += expect_failure("memory", kMemorySource, "M2");
     failures += expect_failure("float", kFloatSource, "f32");
-    failures += expect_failure("params", kManyParamsSource, "4");
 
     if (failures != 0) {
         fprintf(stderr, "%d codegen test(s) failed\n", failures);

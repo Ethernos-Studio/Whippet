@@ -1,8 +1,8 @@
 /*
  * Author: dhjs0000
  *
- * M1 code generator: naive per-instruction selection for the integer subset,
- * GNU as (Intel syntax) text output, Windows x64 ABI.
+ * M1/M2 code generator: naive per-instruction selection for the integer
+ * subset, GNU as (Intel syntax) text output, Windows x64 ABI.
  *
  * Strategy (design sections 6 and 8): correctness first, lots of redundant
  * moves. RAX/RCX/RDX are scratch registers; every computation is normalised
@@ -190,7 +190,7 @@ static bool unsupported_opcode(WhippetDiagnostic *diagnostic,
                                const char *milestone) {
     return codegen_error(
         diagnostic, instruction->location,
-        "M1 backend does not support '%s' yet (%s)",
+        "backend does not support '%s' yet (%s)",
         whippet_opcode_name((WhippetOpcode)instruction->opcode), milestone);
 }
 
@@ -224,19 +224,16 @@ static bool validate_instruction(WhippetDiagnostic *diagnostic,
     case WHIPPET_OP_BITCAST:
     case WHIPPET_OP_PTRTOINT:
     case WHIPPET_OP_INTTOPTR:
-    case WHIPPET_OP_RET:
-    case WHIPPET_OP_BR:
-    case WHIPPET_OP_CONDBR:
-    case WHIPPET_OP_SWITCH:
-        return true;
-
     case WHIPPET_OP_CALL:
     case WHIPPET_OP_ALLOCA:
     case WHIPPET_OP_LOAD:
     case WHIPPET_OP_STORE:
     case WHIPPET_OP_PTRADD:
-        return unsupported_opcode(diagnostic, instruction,
-                                  "planned for M2: calls/frames/memory");
+    case WHIPPET_OP_RET:
+    case WHIPPET_OP_BR:
+    case WHIPPET_OP_CONDBR:
+    case WHIPPET_OP_SWITCH:
+        return true;
 
     case WHIPPET_OP_FADD:
     case WHIPPET_OP_FSUB:
@@ -262,20 +259,13 @@ static bool validate_function(MFunction *machine, WhippetDiagnostic *diagnostic)
     WhippetFunction *function = machine->function;
     const WhippetModule *module = machine->module;
 
-    if (function->param_count > 4u) {
-        return codegen_error(
-            diagnostic, function->location,
-            "M1 supports at most 4 register parameters; '%s' has %u "
-            "(M2 adds stack arguments)",
-            whippet_arena_string(module->arena, function->name),
-            function->param_count);
-    }
     for (uint32_t i = 0; i < function->param_count; ++i) {
         WhippetType type = (WhippetType)function->params[i].type;
         if (!type_is_supported(type)) {
             return codegen_error(
                 diagnostic, function->location,
-                "parameter '%s' has type '%s', which M1 does not support",
+                "parameter '%s' has type '%s', which the M2 backend does not "
+                "support",
                 whippet_arena_string(module->arena,
                                      function->params[i].name),
                 whippet_type_name(type));
@@ -284,7 +274,8 @@ static bool validate_function(MFunction *machine, WhippetDiagnostic *diagnostic)
     if (function->return_type != WHIPPET_TYPE_VOID &&
         !type_is_supported((WhippetType)function->return_type)) {
         return codegen_error(diagnostic, function->location,
-                             "return type '%s' is not supported by M1",
+                             "return type '%s' is not supported by the M2 "
+                             "backend",
                              whippet_type_name(
                                  (WhippetType)function->return_type));
     }
@@ -311,7 +302,7 @@ static bool validate_function(MFunction *machine, WhippetDiagnostic *diagnostic)
                 !type_is_supported((WhippetType)operands[0].type)) {
                 return codegen_error(
                     diagnostic, instruction->location,
-                    "icmp on type '%s' is not supported by M1",
+                    "icmp on type '%s' is not supported by M2",
                     whippet_type_name((WhippetType)operands[0].type));
             }
             if (opcode == WHIPPET_OP_CONDBR &&
@@ -334,7 +325,7 @@ static bool validate_function(MFunction *machine, WhippetDiagnostic *diagnostic)
                 if (!type_is_supported(result_type)) {
                     return codegen_error(
                         diagnostic, instruction->location,
-                        "result type '%s' is not supported by M1",
+                        "result type '%s' is not supported by M2",
                         whippet_type_name(result_type));
                 }
             }
@@ -345,8 +336,34 @@ static bool validate_function(MFunction *machine, WhippetDiagnostic *diagnostic)
                 if (!type_is_supported(source_type)) {
                     return codegen_error(
                         diagnostic, instruction->location,
-                        "cast source type '%s' is not supported by M1",
+                        "cast source type '%s' is not supported by M2",
                         whippet_type_name(source_type));
+                }
+            }
+            if (opcode == WHIPPET_OP_ALLOCA &&
+                !type_is_supported((WhippetType)instruction->aux)) {
+                return codegen_error(
+                    diagnostic, instruction->location,
+                    "alloca of type '%s' is not supported by M2",
+                    whippet_type_name((WhippetType)instruction->aux));
+            }
+            if (opcode == WHIPPET_OP_STORE &&
+                !type_is_supported((WhippetType)instruction->result_type)) {
+                return codegen_error(
+                    diagnostic, instruction->location,
+                    "store of type '%s' is not supported by M2",
+                    whippet_type_name(
+                        (WhippetType)instruction->result_type));
+            }
+            if (opcode == WHIPPET_OP_CALL) {
+                for (uint16_t i = 1; i < instruction->operand_count; ++i) {
+                    if (!type_is_supported((WhippetType)operands[i].type)) {
+                        return codegen_error(
+                            diagnostic, instruction->location,
+                            "call argument of type '%s' is not supported by M2",
+                            whippet_type_name(
+                                (WhippetType)operands[i].type));
+                    }
                 }
             }
         }
@@ -388,9 +405,9 @@ static bool emit_load_operand(AsmBuffer *buffer, MFunction *machine,
     }
     case WHIPPET_OPERAND_FLOAT:
         return codegen_error(diagnostic, 0,
-                             "floating-point constants are not supported by M1");
+                             "floating-point constants are not supported by M2");
     default:
-        return codegen_error(diagnostic, 0, "invalid operand for M1 codegen");
+        return codegen_error(diagnostic, 0, "invalid operand for M2 codegen");
     }
 }
 
@@ -483,7 +500,37 @@ static void emit_stage_parameter(AsmBuffer *buffer, MReg incoming,
     asm_printf(buffer, "  mov qword ptr [rsp + %u], rax\n", slot * 8u);
 }
 
+static void emit_stage_stack_parameter(AsmBuffer *buffer, uint32_t offset,
+                                       WhippetType type, uint32_t slot) {
+    switch (type) {
+    case WHIPPET_TYPE_I8:
+        asm_printf(buffer, "  movzx eax, byte ptr [rsp + %u]\n", offset);
+        break;
+    case WHIPPET_TYPE_I16:
+        asm_printf(buffer, "  movzx eax, word ptr [rsp + %u]\n", offset);
+        break;
+    case WHIPPET_TYPE_I32:
+        asm_printf(buffer, "  mov eax, dword ptr [rsp + %u]\n", offset);
+        break;
+    default:
+        asm_printf(buffer, "  mov rax, qword ptr [rsp + %u]\n", offset);
+        break;
+    }
+    asm_printf(buffer, "  mov qword ptr [rsp + %u], rax\n", slot * 8u);
+}
+
+static uint32_t saved_register_count(const MFunction *machine) {
+    uint32_t count = 0;
+    for (uint32_t i = 0; i < MREG_COUNT; ++i) {
+        if (machine->saved_callee[i]) {
+            count += 1u;
+        }
+    }
+    return count;
+}
+
 static void emit_prologue(AsmBuffer *buffer, MFunction *machine) {
+    uint32_t saved = saved_register_count(machine);
     for (uint32_t i = 0; i < WHIPPET_SAVE_ORDER_COUNT; ++i) {
         MReg reg = kSaveOrder[i];
         if (machine->saved_callee[reg]) {
@@ -495,16 +542,30 @@ static void emit_prologue(AsmBuffer *buffer, MFunction *machine) {
     }
 
     WhippetFunction *function = machine->function;
+    uint32_t param_base = machine->param_base_slot;
     for (uint32_t i = 0; i < function->param_count; ++i) {
-        emit_stage_parameter(buffer, kParameterRegisters[i],
-                             (WhippetType)function->params[i].type, i);
+        WhippetType type = (WhippetType)function->params[i].type;
+        if (i < 4u) {
+            emit_stage_parameter(buffer, kParameterRegisters[i], type,
+                                 param_base + i);
+        } else {
+            /*
+             * At callee entry the fifth argument is at [rsp+40]; the
+             * prologue has since pushed saved registers and subtracted the
+             * frame, so add both back.
+             */
+            uint32_t offset = 40u + saved * 8u + machine->frame_size +
+                              8u * (i - 4u);
+            emit_stage_stack_parameter(buffer, offset, type, param_base + i);
+        }
     }
     for (uint32_t i = 0; i < function->param_count; ++i) {
         uint32_t value = function->params[i].value;
         MLocation *location = &machine->locations[value];
         if (location->kind == MLOC_REG) {
+            uint32_t slot = param_base + i;
             asm_printf(buffer, "  mov %s, qword ptr [rsp + %u]\n",
-                       reg_name((MReg)location->reg, 8), i * 8u);
+                       reg_name((MReg)location->reg, 8), slot * 8u);
         }
     }
 }
@@ -648,7 +709,7 @@ static bool build_edges(EdgeTable *table, MFunction *machine,
             }
         } else if (opcode != WHIPPET_OP_RET) {
             return codegen_error(diagnostic, terminator->location,
-                                 "unsupported terminator in M1");
+                                 "unsupported terminator in M2");
         }
     }
 
@@ -680,7 +741,7 @@ static bool build_edges(EdgeTable *table, MFunction *machine,
                     if (operands[i].kind == WHIPPET_OPERAND_FLOAT) {
                         return codegen_error(
                             diagnostic, phi->location,
-                            "floating-point phi values are not supported by M1");
+                            "floating-point phi values are not supported by M2");
                     }
                     if (!add_edge_move(table, phi->result, &operands[i],
                                        diagnostic)) {
@@ -939,13 +1000,151 @@ static bool emit_cast(AsmBuffer *buffer, MFunction *machine,
         break;
     default:
         return codegen_error(diagnostic, instruction->location,
-                             "unsupported M1 cast");
+                             "unsupported M2 cast");
     }
+    return emit_store_rax(buffer, machine, instruction->result, diagnostic);
+}
+
+static bool emit_call(AsmBuffer *buffer, MFunction *machine,
+                      const WhippetInstr *instruction,
+                      WhippetDiagnostic *diagnostic) {
+    const WhippetOperand *operands =
+        whippet_instr_operands(machine->module, instruction);
+    uint32_t argument_count = instruction->operand_count - 1u;
+
+    /* Outgoing stack arguments live above the 32-byte shadow space. */
+    for (uint32_t i = 4; i < argument_count; ++i) {
+        if (!emit_load_operand(buffer, machine, &operands[i + 1u], MREG_RAX,
+                               diagnostic)) {
+            return false;
+        }
+        asm_printf(buffer, "  mov qword ptr [rsp + %u], rax\n",
+                   32u + (i - 4u) * 8u);
+    }
+
+    uint32_t register_arguments = argument_count < 4u ? argument_count : 4u;
+    for (uint32_t i = 0; i < register_arguments; ++i) {
+        if (!emit_load_operand(buffer, machine, &operands[i + 1u],
+                               kParameterRegisters[i], diagnostic)) {
+            return false;
+        }
+    }
+
+    if (operands[0].kind == WHIPPET_OPERAND_SYMBOL) {
+        asm_printf(buffer, "  call %s\n",
+                   whippet_arena_string(machine->module->arena,
+                                        operands[0].name));
+    } else {
+        if (!emit_load_operand(buffer, machine, &operands[0], MREG_RAX,
+                               diagnostic)) {
+            return false;
+        }
+        asm_append(buffer, "  call rax\n");
+    }
+
+    if (instruction->result != 0) {
+        emit_normalize_rax(buffer, (WhippetType)instruction->result_type);
+        return emit_store_rax(buffer, machine, instruction->result,
+                              diagnostic);
+    }
+    return true;
+}
+
+static bool emit_alloca(AsmBuffer *buffer, MFunction *machine,
+                        const WhippetInstr *instruction,
+                        uint32_t instruction_handle,
+                        WhippetDiagnostic *diagnostic) {
+    int32_t offset = machine->alloca_offsets[instruction_handle];
+    asm_printf(buffer, "  lea rax, [rsp + %d]\n", offset);
+    return emit_store_rax(buffer, machine, instruction->result, diagnostic);
+}
+
+static bool emit_load_memory(AsmBuffer *buffer, MFunction *machine,
+                             const WhippetInstr *instruction,
+                             WhippetDiagnostic *diagnostic) {
+    const WhippetOperand *operands =
+        whippet_instr_operands(machine->module, instruction);
+    WhippetType type = (WhippetType)instruction->result_type;
+    if (!emit_load_operand(buffer, machine, &operands[0], MREG_RCX,
+                           diagnostic)) {
+        return false;
+    }
+    switch (type) {
+    case WHIPPET_TYPE_I8:
+        asm_append(buffer, "  movzx eax, byte ptr [rcx]\n");
+        break;
+    case WHIPPET_TYPE_I16:
+        asm_append(buffer, "  movzx eax, word ptr [rcx]\n");
+        break;
+    case WHIPPET_TYPE_I32:
+        asm_append(buffer, "  mov eax, dword ptr [rcx]\n");
+        break;
+    case WHIPPET_TYPE_I64:
+    case WHIPPET_TYPE_PTR:
+        asm_append(buffer, "  mov rax, qword ptr [rcx]\n");
+        break;
+    default:
+        return codegen_error(diagnostic, instruction->location,
+                             "load of type '%s' is not supported",
+                             whippet_type_name(type));
+    }
+    return emit_store_rax(buffer, machine, instruction->result, diagnostic);
+}
+
+static bool emit_store_memory(AsmBuffer *buffer, MFunction *machine,
+                              const WhippetInstr *instruction,
+                              WhippetDiagnostic *diagnostic) {
+    const WhippetOperand *operands =
+        whippet_instr_operands(machine->module, instruction);
+    WhippetType type = (WhippetType)instruction->result_type;
+    if (!emit_load_operand(buffer, machine, &operands[0], MREG_RAX,
+                           diagnostic) ||
+        !emit_load_operand(buffer, machine, &operands[1], MREG_RCX,
+                           diagnostic)) {
+        return false;
+    }
+    switch (type) {
+    case WHIPPET_TYPE_I8:
+        asm_append(buffer, "  mov byte ptr [rcx], al\n");
+        break;
+    case WHIPPET_TYPE_I16:
+        asm_append(buffer, "  mov word ptr [rcx], ax\n");
+        break;
+    case WHIPPET_TYPE_I32:
+        asm_append(buffer, "  mov dword ptr [rcx], eax\n");
+        break;
+    case WHIPPET_TYPE_I64:
+    case WHIPPET_TYPE_PTR:
+        asm_append(buffer, "  mov qword ptr [rcx], rax\n");
+        break;
+    default:
+        return codegen_error(diagnostic, instruction->location,
+                             "store of type '%s' is not supported",
+                             whippet_type_name(type));
+    }
+    return true;
+}
+
+static bool emit_ptradd(AsmBuffer *buffer, MFunction *machine,
+                        const WhippetInstr *instruction,
+                        WhippetDiagnostic *diagnostic) {
+    const WhippetOperand *operands =
+        whippet_instr_operands(machine->module, instruction);
+    WhippetType offset_type = (WhippetType)operands[1].type;
+    if (!emit_load_operand(buffer, machine, &operands[0], MREG_RAX,
+                           diagnostic) ||
+        !emit_load_operand(buffer, machine, &operands[1], MREG_RCX,
+                           diagnostic)) {
+        return false;
+    }
+    emit_sign_extend(buffer, MREG_RCX, offset_type);
+    asm_append(buffer, "  add rax, rcx\n");
     return emit_store_rax(buffer, machine, instruction->result, diagnostic);
 }
 
 static bool emit_instruction(AsmBuffer *buffer, MFunction *machine,
                              WhippetBlock *block,
+                             uint32_t instruction_handle,
                              const WhippetInstr *instruction, EdgeTable *edges,
                              WhippetDiagnostic *diagnostic) {
     WhippetOpcode opcode = (WhippetOpcode)instruction->opcode;
@@ -1017,6 +1216,22 @@ static bool emit_instruction(AsmBuffer *buffer, MFunction *machine,
     case WHIPPET_OP_INTTOPTR:
         return emit_cast(buffer, machine, instruction, diagnostic);
 
+    case WHIPPET_OP_CALL:
+        return emit_call(buffer, machine, instruction, diagnostic);
+
+    case WHIPPET_OP_ALLOCA:
+        return emit_alloca(buffer, machine, instruction, instruction_handle,
+                           diagnostic);
+
+    case WHIPPET_OP_LOAD:
+        return emit_load_memory(buffer, machine, instruction, diagnostic);
+
+    case WHIPPET_OP_STORE:
+        return emit_store_memory(buffer, machine, instruction, diagnostic);
+
+    case WHIPPET_OP_PTRADD:
+        return emit_ptradd(buffer, machine, instruction, diagnostic);
+
     case WHIPPET_OP_RET:
         if (instruction->operand_count == 1) {
             if (!emit_load_operand(buffer, machine, &operands[0], MREG_RAX,
@@ -1060,7 +1275,7 @@ static bool emit_instruction(AsmBuffer *buffer, MFunction *machine,
     }
 
     case WHIPPET_OP_SWITCH: {
-        /* M1 lowers switch to a compare chain; jump tables are a later pass. */
+        /* M2 lowers switch to a compare chain; jump tables are a later pass. */
         if (!emit_load_operand(buffer, machine, &operands[0], MREG_RAX,
                                diagnostic)) {
             return false;
@@ -1088,7 +1303,7 @@ static bool emit_instruction(AsmBuffer *buffer, MFunction *machine,
     }
 
     default:
-        return unsupported_opcode(diagnostic, instruction, "M1");
+        return unsupported_opcode(diagnostic, instruction, "M2");
     }
 }
 
@@ -1108,6 +1323,29 @@ static bool prepare_function(MFunction *machine, const WhippetModule *module,
     if (!validate_function(machine, diagnostic)) {
         return false;
     }
+
+    machine->has_calls = false;
+    machine->max_stack_args = 0;
+    for (WhippetBlock *block = function->first_block; block != NULL;
+         block = block->next) {
+        const WhippetInstr *instruction = NULL;
+        for (uint32_t handle = block->first; handle != WHIPPET_HANDLE_NONE;
+             handle = instruction->next) {
+            instruction = whippet_module_node(module, handle);
+            if ((WhippetOpcode)instruction->opcode == WHIPPET_OP_CALL) {
+                machine->has_calls = true;
+                uint32_t argument_count =
+                    instruction->operand_count - 1u;
+                if (argument_count > 4u &&
+                    argument_count - 4u > machine->max_stack_args) {
+                    machine->max_stack_args = argument_count - 4u;
+                }
+            }
+        }
+    }
+    machine->call_area_slots =
+        machine->has_calls ? 4u + machine->max_stack_args : 0u;
+
     if (!whippet_regalloc_run(machine, diagnostic)) {
         return false;
     }
@@ -1121,8 +1359,8 @@ static bool prepare_function(MFunction *machine, const WhippetModule *module,
     if (stack_use > 4096u) {
         return codegen_error(
             diagnostic, function->location,
-            "stack use of %u bytes exceeds the M1 limit of 4096 "
-            "(stack probing is M2 work)",
+            "stack use of %u bytes exceeds the backend limit of 4096 "
+            "(stack probing is not implemented yet)",
             stack_use);
     }
     return true;
@@ -1160,8 +1398,8 @@ static bool emit_function(AsmBuffer *buffer, const WhippetModule *module,
         for (uint32_t handle = block->first; handle != WHIPPET_HANDLE_NONE;
              handle = instruction->next) {
             instruction = whippet_module_node(module, handle);
-            if (!emit_instruction(buffer, &machine, block, instruction, &edges,
-                                  diagnostic)) {
+            if (!emit_instruction(buffer, &machine, block, handle, instruction,
+                                  &edges, diagnostic)) {
                 whippet_arena_destroy(scratch);
                 return false;
             }

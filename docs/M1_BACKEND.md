@@ -2,6 +2,9 @@
 
 > 作者：dhjs0000
 >
+> M2 在此基础上增加函数调用、栈参数、栈帧和内存操作，见
+> [M2_ABI.md](M2_ABI.md)。
+>
 > 对应实现：`src/isel/isel.c`、`src/regalloc/linear.c`、`src/emit/as.c`。
 > 目标：naive 指令选择 → GNU as（Intel 语法）文本，整数子集；验收为
 > `add_mul` 汇编、链接、运行正确。
@@ -61,7 +64,7 @@ Whippet IR
   2. spill 槽；
   3. phi 边移动 scratch 槽（每个边最多 `max_phi_moves` 个，复用）。
 - 帧大小 16 字节对齐；M1 限制 4096 字节，避免需要 Windows 栈探测
-  （`__chkstk` 属于 M2）。
+  （`__chkstk` 留待后续）。
 
 ## 4. 活跃区间与线性扫描
 
@@ -162,6 +165,8 @@ add_mul:
 
 ## 9. 后续
 
-- **M2**：函数调用、栈参数、shadow space、栈探测、内存操作；
+- **M2（已完成）**：函数调用、栈参数、shadow space、栈帧、内存操作；
+  见 [M2_ABI.md](M2_ABI.md)；
 - **M3**：内部汇编器 + COFF 直写、O1 中端流水线、编译速度；
-- **M4**：浮点/XMM、struct/union 布局、-O2。
+- **M4**：浮点/XMM、struct/union 布局、-O2；
+- 后续可选：栈探测、unwind info、跳转表、尾调用、可变参数。

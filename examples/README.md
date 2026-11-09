@@ -1,7 +1,8 @@
-# Whippet 示例（M1）
+# Whippet 示例（M2）
 
-这些示例使用当前 M1 后端：整数子集 + 分支/`switch`/phi/循环，输出
-Windows x64 GNU as 文本。需要先按仓库根目录的 README 构建 `build/whippet.exe`。
+这些示例使用当前 M2 后端：整数子集、分支/`switch`/phi/循环、函数调用、
+栈参数、递归、alloca/load/store/指针，输出 Windows x64 GNU as 文本。
+需要先按仓库根目录的 README 构建 `build/whippet.exe`。
 
 ## 一键运行（Windows）
 
@@ -33,9 +34,12 @@ clang .\examples\add_mul_driver.c .\build\examples\add_mul.s -o .\build\examples
 | --- | --- | --- |
 | `add_mul.wir` | 设计文档的 `a*4+b` | `add_mul(6, 7) = 31` |
 | `fib.wir` | 迭代 fib，含 phi/循环 | `fib(0..3,10) = 0,1,1,2,55` |
+| `fib_rec.wir` | **递归 fib，函数调用 + 栈帧** | `fib_rec(20) = 6765` |
 | `classify.wir` | 条件分支 + 位置式 switch | `0,5,20,30,30` |
 | `bitops.wir` | 算术、移位、比较、select | `100,144,100` |
-| `exit42.wir` | 自包含 `main`，无 C driver | 进程退出码 `42` |
+| `pointers.wir` | alloca/load/store、指针跨调用 | `use_ptr=42, memory=42` |
+| `hello.wir` | 自包含 `main`，调用 CRT `putchar` | 输出 `Hi`，退出码 0 |
+| `exit42.wir` | 自包含 `main` | 进程退出码 `42` |
 
 `classify.wir` 的 switch 是**位置式**的：case 索引 0 跳到 `case0`，索引 1
 跳到 `case1`，其余走 `other`。M1 暂时用比较链降低 switch，跳转表是后续优化。
@@ -51,6 +55,7 @@ $LASTEXITCODE   # 42
 
 ## 当前限制
 
-M1 不支持函数调用、`alloca/load/store/ptradd`、浮点和超过 4 个参数；
-这些示例都刻意只用当前可用子集。更完整的后端说明见
-[../docs/M1_BACKEND.md](../docs/M1_BACKEND.md)。
+M2 已支持函数调用（含递归/间接调用/栈参数）和 `alloca/load/store/ptradd`；
+仍不支持浮点、可变参数和超过 4096 字节的栈帧（栈探测尚未实现）。这些示例
+都只使用当前可用子集。更完整的后端说明见
+[../docs/M2_ABI.md](../docs/M2_ABI.md)。

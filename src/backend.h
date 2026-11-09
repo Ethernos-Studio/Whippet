@@ -49,11 +49,18 @@ typedef struct MFunction {
     WhippetArena *scratch;
 
     MLocation *locations; /* indexed by 1-based value id */
-    uint32_t frame_size;  /* bytes subtracted from rsp, 16-byte aligned */
+    uint32_t frame_size;  /* bytes subtracted from rsp */
     uint32_t param_count;
     uint32_t spill_slots;
     uint32_t scratch_base_slot; /* first phi-edge scratch slot */
     uint32_t max_edge_moves;
+
+    bool has_calls;
+    uint32_t call_area_slots; /* shadow space + outgoing stack args */
+    uint32_t max_stack_args;
+    uint32_t alloca_slots;
+    uint32_t param_base_slot;
+    int32_t *alloca_offsets; /* indexed by instruction handle */
 
     bool saved_callee[MREG_COUNT];
     bool saves_callee_saved;

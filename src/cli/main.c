@@ -18,7 +18,7 @@
 static void print_usage(FILE *out) {
     fputs("usage: whippet [options] <file.wir>\n"
           "\n"
-          "M1: parse Whippet IR and emit Windows x64 GNU as text (Intel syntax).\n"
+          "M2: parse Whippet IR and emit Windows x64 GNU as text (Intel syntax).\n"
           "\n"
           "options:\n"
           "  -S, --emit-asm   emit assembly (default)\n"
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
             return 0;
         }
         if (strcmp(argument, "--version") == 0) {
-            puts("whippet 0.2.0 (M1)");
+            puts("whippet 0.3.0 (M2)");
             return 0;
         }
         if (strcmp(argument, "--check") == 0) {
